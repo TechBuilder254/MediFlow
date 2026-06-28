@@ -1,12 +1,10 @@
 import { Routes, Route, Navigate } from 'react-router-dom'
 import { useAuthInit } from '@/features/auth/useAuthInit'
-import { useAuthStore } from '@/hooks/useAuth'
 import { ProtectedRoute, PublicRoute } from '@/routes/ProtectedRoute'
 import { RoleRoute } from '@/routes/RoleRoute'
 import { DashboardLayout } from '@/components/layouts/DashboardLayout'
 import { PatientLayout } from '@/components/layouts/PatientLayout'
 import { PatientRouteGuard } from '@/features/patient-portal/components/ApprovalGate'
-import { getDefaultRoute } from '@/lib/permissions'
 import { LandingPage } from '@/features/landing/LandingPage'
 import { LoginPage } from '@/features/auth/LoginPage'
 import { RegisterPage } from '@/features/auth/RegisterPage'
@@ -49,13 +47,6 @@ import { PatientDocumentsPage } from '@/features/patient-portal/PatientDocuments
 import { PatientFeedbackPage } from '@/features/patient-portal/PatientFeedbackPage'
 import { PatientSettingsPage } from '@/features/patient-portal/PatientSettingsPage'
 
-function HomeRedirect() {
-  const { profile, loading } = useAuthStore()
-  if (loading) return null
-  if (!profile) return <Navigate to="/" replace />
-  return <Navigate to={getDefaultRoute(profile.role)} replace />
-}
-
 export default function App() {
   useAuthInit()
 
@@ -71,8 +62,6 @@ export default function App() {
       <Route element={<ProtectedRoute />}>
         {/* Staff portal */}
         <Route element={<DashboardLayout />}>
-          <Route index element={<HomeRedirect />} />
-
           <Route element={<RoleRoute route="/dashboard" />}>
             <Route path="/dashboard" element={<DashboardPage />} />
           </Route>
