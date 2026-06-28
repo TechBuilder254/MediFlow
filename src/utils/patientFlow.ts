@@ -199,8 +199,12 @@ export function calcProfileCompletion(patient: {
   return { percent, missing }
 }
 
+export function normalizePhone(phone: string): string {
+  return phone.replace(/\D/g, '')
+}
+
 export function phoneToAuthEmail(phone: string): string {
-  const digits = phone.replace(/\D/g, '')
+  const digits = normalizePhone(phone)
   return `p${digits}@patients.mediflow.ke`
 }
 

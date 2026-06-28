@@ -1,7 +1,7 @@
 import { supabase } from '@/lib/supabase'
 import type { User } from '@supabase/supabase-js'
 import type { Profile } from '@/types'
-import { phoneToAuthEmail, isPhoneInput } from '@/utils/patientFlow'
+import { phoneToAuthEmail, isPhoneInput, normalizePhone } from '@/utils/patientFlow'
 import { useAuthStore } from '@/hooks/useAuth'
 
 export async function syncAuthSession(user: User): Promise<Profile | null> {
@@ -32,30 +32,31 @@ export async function resolveLoginEmail(identifier: string): Promise<string> {
 
 export interface PatientRegistration {
   fullName: string
-  nationalId: string
+  nationalId?: string
   phone: string
-  email?: string
+  email: string
   dateOfBirth: string
   gender: string
   password: string
 }
 
 export async function registerPatient(reg: PatientRegistration) {
-  const authEmail = reg.email?.trim() || phoneToAuthEmail(reg.phone)
+  const email = reg.email.trim()
+  const phone = normalizePhone(reg.phone)
 
   const { data, error } = await supabase.auth.signUp({
-    email: authEmail,
+    email,
     password: reg.password,
     options: {
       emailRedirectTo: undefined,
       data: {
         full_name: reg.fullName,
         role: 'patient',
-        phone: reg.phone,
-        national_id: reg.nationalId,
+        phone,
+        national_id: reg.nationalId?.trim() || null,
         date_of_birth: reg.dateOfBirth,
         gender: reg.gender,
-        contact_email: reg.email || null,
+        contact_email: email,
       },
     },
   })
