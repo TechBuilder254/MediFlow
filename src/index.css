@@ -1,0 +1,55 @@
+@import "tailwindcss";
+
+@theme {
+  --font-sans: "DM Sans", system-ui, sans-serif;
+  --font-display: "Plus Jakarta Sans", system-ui, sans-serif;
+
+  --color-primary-50: #f0fdfa;
+  --color-primary-100: #ccfbf1;
+  --color-primary-200: #99f6e4;
+  --color-primary-300: #5eead4;
+  --color-primary-400: #2dd4bf;
+  --color-primary-500: #14b8a6;
+  --color-primary-600: #0d9488;
+  --color-primary-700: #0f766e;
+  --color-primary-800: #115e59;
+  --color-primary-900: #134e4a;
+
+  --color-navy-50: #f0f4f8;
+  --color-navy-100: #d9e2ec;
+  --color-navy-200: #bcccdc;
+  --color-navy-300: #9fb3c8;
+  --color-navy-400: #829ab1;
+  --color-navy-500: #627d98;
+  --color-navy-600: #486581;
+  --color-navy-700: #334e68;
+  --color-navy-800: #243b53;
+  --color-navy-900: #102a43;
+  --color-navy-950: #0a1929;
+
+  --color-accent-400: #38bdf8;
+  --color-accent-500: #0ea5e9;
+  --color-accent-600: #0284c7;
+
+  --color-success: #10b981;
+  --color-warning: #f59e0b;
+  --color-danger: #ef4444;
+}
+
+@layer base {
+  html {
+    scroll-behavior: smooth;
+  }
+  body {
+    @apply font-sans text-navy-900 bg-slate-50 antialiased;
+  }
+}
+
+@layer utilities {
+  .text-gradient {
+    @apply bg-gradient-to-r from-primary-600 to-accent-500 bg-clip-text text-transparent;
+  }
+  .glass {
+    @apply bg-white/80 backdrop-blur-md border border-white/20;
+  }
+}
