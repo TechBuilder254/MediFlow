@@ -61,7 +61,7 @@ export function DashboardLayout() {
 
   const handleLogout = async () => {
     await signOut()
-    navigate('/login')
+    navigate('/')
   }
 
   return (

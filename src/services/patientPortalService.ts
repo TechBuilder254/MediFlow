@@ -209,8 +209,25 @@ export function useBookAppointment() {
       status?: string
       attachment_urls?: string[]
       notes?: string
+      created_by?: string
     }) => {
-      const { data, error } = await supabase.from('appointments').insert(payload).select().single()
+      const row: Record<string, unknown> = {
+        patient_id: payload.patient_id,
+        doctor_id: payload.doctor_id,
+        department_id: payload.department_id,
+        appointment_date: payload.appointment_date,
+        start_time: payload.start_time,
+        end_time: payload.end_time,
+        reason: payload.reason,
+        symptoms: payload.symptoms,
+        urgency: payload.urgency ?? 'routine',
+        status: payload.status ?? 'pending',
+        created_by: payload.created_by,
+      }
+      if (payload.notes) row.notes = payload.notes
+      if (payload.attachment_urls?.length) row.attachment_urls = payload.attachment_urls
+
+      const { data, error } = await supabase.from('appointments').insert(row).select().single()
       if (error) throw error
       return data
     },

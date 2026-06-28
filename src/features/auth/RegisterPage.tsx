@@ -6,9 +6,8 @@ import { z } from 'zod'
 import { Activity, Eye, EyeOff } from 'lucide-react'
 import { Button } from '@/components/ui/Button'
 import { Input } from '@/components/ui/Input'
-import { registerPatient, fetchUserProfile } from '@/features/auth/authService'
+import { registerPatient } from '@/features/auth/authService'
 import { getAuthErrorMessage } from '@/utils/authErrors'
-import { useAuthStore } from '@/hooks/useAuth'
 
 const schema = z.object({
   fullName: z.string().min(2, 'Full name is required'),
@@ -28,7 +27,6 @@ export function RegisterPage() {
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(false)
   const navigate = useNavigate()
-  const { setProfile } = useAuthStore()
   const form = useForm<RegisterForm>({ resolver: zodResolver(schema) })
 
   const onRegister = async (data: RegisterForm) => {
@@ -45,8 +43,6 @@ export function RegisterPage() {
         password: data.password,
       })
       if (result.user) {
-        const profile = await fetchUserProfile(result.user.id)
-        setProfile(profile)
         navigate('/portal/complete-profile')
       }
     } catch (err) {

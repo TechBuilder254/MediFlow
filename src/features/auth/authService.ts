@@ -1,25 +1,33 @@
 import { supabase } from '@/lib/supabase'
+import type { User } from '@supabase/supabase-js'
 import type { Profile } from '@/types'
-import { phoneToAuthEmail } from '@/utils/patientFlow'
+import { phoneToAuthEmail, isPhoneInput } from '@/utils/patientFlow'
+import { useAuthStore } from '@/hooks/useAuth'
+
+export async function syncAuthSession(user: User): Promise<Profile | null> {
+  const store = useAuthStore.getState()
+  store.setUser(user)
+  const profile = await fetchUserProfile(user.id)
+  store.setProfile(profile)
+  store.setLoading(false)
+  return profile
+}
 
 export async function fetchUserProfile(userId: string): Promise<Profile | null> {
-  const { data } = await supabase
+  const { data, error } = await supabase
     .from('profiles')
     .select('*')
     .eq('id', userId)
     .single()
+  if (error) return null
   return data as Profile | null
 }
 
 export async function resolveLoginEmail(identifier: string): Promise<string> {
-  if (identifier.includes('@')) return identifier
-  const { data } = await supabase
-    .from('patients')
-    .select('email, phone')
-    .or(`phone.eq.${identifier},phone.eq.+${identifier.replace(/\D/g, '')}`)
-    .maybeSingle()
-  if (data?.email) return data.email
-  return phoneToAuthEmail(identifier)
+  const trimmed = identifier.trim()
+  if (trimmed.includes('@')) return trimmed
+  if (isPhoneInput(trimmed)) return phoneToAuthEmail(trimmed)
+  return trimmed
 }
 
 export interface PatientRegistration {
@@ -52,6 +60,7 @@ export async function registerPatient(reg: PatientRegistration) {
     },
   })
   if (error) throw error
+  if (data.user) await syncAuthSession(data.user)
   return data
 }
 
@@ -59,12 +68,14 @@ export async function signIn(identifier: string, password: string) {
   const email = await resolveLoginEmail(identifier)
   const { data, error } = await supabase.auth.signInWithPassword({ email, password })
   if (error) throw error
+  if (data.user) await syncAuthSession(data.user)
   return data
 }
 
 export async function signOut() {
   const { error } = await supabase.auth.signOut()
   if (error) throw error
+  useAuthStore.getState().reset()
 }
 
 // Re-export hook from separate file to avoid circular deps

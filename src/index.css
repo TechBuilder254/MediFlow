@@ -52,4 +52,29 @@
   .glass {
     @apply bg-white/80 backdrop-blur-md border border-white/20;
   }
+  .toast-enter {
+    animation: toast-slide-in 0.28s ease-out, toast-fade-out 0.35s ease-in 2.85s forwards;
+  }
+}
+
+@keyframes toast-slide-in {
+  from {
+    opacity: 0;
+    transform: translateX(110%);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+@keyframes toast-fade-out {
+  from {
+    opacity: 1;
+    transform: translateX(0);
+  }
+  to {
+    opacity: 0;
+    transform: translateX(110%);
+  }
 }

@@ -42,7 +42,7 @@ export function PatientLayout() {
 
   const handleLogout = async () => {
     await signOut()
-    navigate('/login')
+    navigate('/')
   }
 
   if (isLoading) return <LoadingSpinner className="min-h-screen" />

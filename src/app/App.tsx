@@ -52,7 +52,7 @@ import { PatientSettingsPage } from '@/features/patient-portal/PatientSettingsPa
 function HomeRedirect() {
   const { profile, loading } = useAuthStore()
   if (loading) return null
-  if (!profile) return <Navigate to="/login" replace />
+  if (!profile) return <Navigate to="/" replace />
   return <Navigate to={getDefaultRoute(profile.role)} replace />
 }
 

@@ -12,12 +12,13 @@ import { useAuthStore } from '@/hooks/useAuth'
 import { useMyPatientRecord, useUpdateMyProfile } from '@/services/patientPortalService'
 import { supabase } from '@/lib/supabase'
 import { getInitials } from '@/utils/cn'
+import { toast } from '@/hooks/useToast'
+import { getAuthErrorMessage } from '@/utils/authErrors'
 
 export function PatientProfilePage() {
   const { user, profile } = useAuthStore()
   const { data: patient, isLoading } = useMyPatientRecord(user?.id)
   const updateProfile = useUpdateMyProfile()
-  const [saved, setSaved] = useState(false)
   const [pwMsg, setPwMsg] = useState('')
 
   const form = useForm({
@@ -35,9 +36,12 @@ export function PatientProfilePage() {
   if (isLoading || !patient) return <LoadingSpinner />
 
   const onSave = async (data: Record<string, string>) => {
-    await updateProfile.mutateAsync({ id: patient.id, ...data })
-    setSaved(true)
-    setTimeout(() => setSaved(false), 3000)
+    try {
+      await updateProfile.mutateAsync({ id: patient.id, ...data })
+      toast('Profile saved successfully!')
+    } catch (err) {
+      toast(getAuthErrorMessage(err, 'Could not save profile.'), 'error')
+    }
   }
 
   const changePassword = async (e: React.FormEvent<HTMLFormElement>) => {
@@ -45,7 +49,14 @@ export function PatientProfilePage() {
     const fd = new FormData(e.currentTarget)
     const password = fd.get('password') as string
     const { error } = await supabase.auth.updateUser({ password })
-    setPwMsg(error ? error.message : 'Password updated successfully')
+    if (error) {
+      toast(error.message, 'error')
+      setPwMsg(error.message)
+    } else {
+      toast('Password updated successfully!')
+      setPwMsg('')
+      e.currentTarget.reset()
+    }
   }
 
   return (
@@ -81,7 +92,6 @@ export function PatientProfilePage() {
               <Input label="Relationship" {...form.register('next_of_kin_relationship')} />
               <div className="sm:col-span-2 flex items-center gap-3">
                 <Button type="submit" loading={updateProfile.isPending}>Save Changes</Button>
-                {saved && <span className="text-sm text-emerald-600">Saved!</span>}
               </div>
             </form>
           </Card>

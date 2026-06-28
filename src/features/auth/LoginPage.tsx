@@ -6,7 +6,7 @@ import { z } from 'zod'
 import { Activity, Eye, EyeOff } from 'lucide-react'
 import { Button } from '@/components/ui/Button'
 import { Input } from '@/components/ui/Input'
-import { signIn, fetchUserProfile } from '@/features/auth/authService'
+import { signIn } from '@/features/auth/authService'
 import { getAuthErrorMessage } from '@/utils/authErrors'
 import { getDefaultRoute } from '@/lib/permissions'
 import { useAuthStore } from '@/hooks/useAuth'
@@ -23,19 +23,15 @@ export function LoginPage() {
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(false)
   const navigate = useNavigate()
-  const { setProfile } = useAuthStore()
   const form = useForm<LoginForm>({ resolver: zodResolver(schema) })
 
   const onLogin = async (data: LoginForm) => {
     setLoading(true)
     setError('')
     try {
-      const result = await signIn(data.identifier, data.password)
-      if (result.user) {
-        const profile = await fetchUserProfile(result.user.id)
-        setProfile(profile)
-        navigate(getDefaultRoute(profile?.role))
-      }
+      await signIn(data.identifier, data.password)
+      const profile = useAuthStore.getState().profile
+      navigate(getDefaultRoute(profile?.role))
     } catch (err) {
       setError(getAuthErrorMessage(err, 'Login failed. Check your phone/email and password.'))
     } finally {

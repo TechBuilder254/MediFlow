@@ -36,6 +36,8 @@ import { BookingCalendar } from '@/features/patient-portal/components/BookingCal
 import { BookingTimePicker } from '@/features/patient-portal/components/BookingTimePicker'
 import type { AppointmentUrgency } from '@/types'
 import { cn } from '@/utils/cn'
+import { toast } from '@/hooks/useToast'
+import { getAuthErrorMessage } from '@/utils/authErrors'
 
 const STEPS = [
   { key: 'department', label: 'Department', icon: Building2, desc: 'Choose the department for your visit' },
@@ -80,7 +82,7 @@ export function BookAppointmentPage() {
   const fileRef = useRef<HTMLInputElement>(null)
 
   const { user } = useAuthStore()
-  const { data: patient } = useMyPatientRecord(user?.id)
+  const { data: patient, isLoading: loadingPatient, refetch: refetchPatient } = useMyPatientRecord(user?.id)
   const book = useBookAppointment()
   const navigate = useNavigate()
 
@@ -176,7 +178,19 @@ export function BookAppointmentPage() {
     (step === 4 && symptoms.trim().length >= 10)
 
   const submit = async () => {
-    if (!patient || !doctorId || !deptId || !date || !time || !user) return
+    if (!user) {
+      toast('Please sign in to book an appointment.', 'error')
+      return
+    }
+    if (!patient) {
+      toast('Your patient record is loading. Please wait a moment and try again.', 'error')
+      void refetchPatient()
+      return
+    }
+    if (!doctorId || !deptId || !date || !time) {
+      toast('Please complete all booking steps before submitting.', 'error')
+      return
+    }
     setSubmitting(true)
     try {
       let attachment_urls: string[] | undefined
@@ -194,12 +208,16 @@ export function BookAppointmentPage() {
         symptoms,
         urgency,
         status: 'pending',
+        created_by: user.id,
         attachment_urls,
         notes: isCustomService
           ? `Service requested: ${customServiceName.trim()}. Routed via ${TRIAGE_DEPARTMENT_NAME} for triage.`
           : undefined,
       })
+      toast('Appointment request submitted!')
       navigate('/portal/appointments')
+    } catch (err) {
+      toast(getAuthErrorMessage(err, 'Could not submit appointment. Please try again.'), 'error')
     } finally {
       setSubmitting(false)
     }
@@ -212,6 +230,8 @@ export function BookAppointmentPage() {
   }
 
   const current = STEPS[step]
+
+  if (loadingPatient && !patient) return <LoadingSpinner />
 
   return (
     <div>
@@ -525,7 +545,7 @@ export function BookAppointmentPage() {
             Next <ChevronRight className="h-4 w-4" />
           </Button>
         ) : (
-          <Button onClick={submit} loading={submitting || book.isPending}>
+          <Button type="button" onClick={submit} loading={submitting || book.isPending}>
             Submit Request
           </Button>
         )}
