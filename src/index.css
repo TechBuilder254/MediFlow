@@ -55,6 +55,33 @@
   .toast-enter {
     animation: toast-slide-in 0.28s ease-out, toast-fade-out 0.35s ease-in 2.85s forwards;
   }
+  .landing-grid {
+    background-image:
+      linear-gradient(to right, rgb(13 148 136 / 0.06) 1px, transparent 1px),
+      linear-gradient(to bottom, rgb(13 148 136 / 0.06) 1px, transparent 1px);
+    background-size: 48px 48px;
+  }
+  .landing-float {
+    animation: landing-float 7s ease-in-out infinite;
+  }
+  .landing-float-delayed {
+    animation: landing-float 7s ease-in-out 1.5s infinite;
+  }
+  .landing-shine {
+    background: linear-gradient(110deg, transparent 40%, rgb(255 255 255 / 0.35) 50%, transparent 60%);
+    background-size: 200% 100%;
+    animation: landing-shine 4s ease-in-out infinite;
+  }
+}
+
+@keyframes landing-float {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-10px); }
+}
+
+@keyframes landing-shine {
+  0% { background-position: 200% 0; }
+  100% { background-position: -200% 0; }
 }
 
 @keyframes toast-slide-in {
