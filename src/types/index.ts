@@ -213,6 +213,36 @@ export interface Notification {
   created_at: string
 }
 
+export interface Prescription {
+  id: string
+  patient_id: string
+  doctor_id: string
+  medicine_id: string
+  dosage: string
+  frequency: string
+  duration: string
+  instructions?: string | null
+  quantity: number
+  dispensed: boolean
+  dispensed_at?: string | null
+  dispensed_by?: string | null
+  created_at: string
+  medicine?: Medicine
+  doctor?: Doctor
+}
+
+export interface PatientMessage {
+  id: string
+  patient_id: string
+  sender_id: string
+  recipient_role: string
+  subject: string
+  body: string
+  is_read: boolean
+  created_at: string
+  sender?: Profile
+}
+
 export interface DashboardStats {
   todayPatients: number
   appointments: number

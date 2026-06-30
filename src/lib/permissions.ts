@@ -12,6 +12,7 @@ export type AppRoute =
   | '/assessments'
   | '/admissions'
   | '/laboratory'
+  | '/lab-results'
   | '/pharmacy'
   | '/inventory'
   | '/billing'
@@ -26,15 +27,16 @@ export const ROUTE_PERMISSIONS: Record<AppRoute, UserRole[]> = {
   '/dashboard': ['super_admin', 'admin', 'doctor', 'nurse', 'receptionist', 'pharmacist', 'lab_technician', 'cashier'],
   '/portal': ['patient'],
   '/patients': ['super_admin', 'admin', 'doctor', 'nurse', 'receptionist'],
-  '/doctors': ['super_admin', 'admin', 'doctor', 'nurse', 'receptionist'],
+  '/doctors': ['super_admin', 'admin', 'nurse', 'receptionist'],
   '/appointments': ['super_admin', 'admin', 'doctor', 'nurse', 'receptionist'],
   '/consultation': ['super_admin', 'admin', 'doctor'],
   '/queue': ['super_admin', 'admin', 'receptionist', 'nurse'],
   '/reception': ['super_admin', 'admin', 'receptionist'],
   '/assessments': ['super_admin', 'admin', 'nurse'],
   '/admissions': ['super_admin', 'admin', 'doctor', 'nurse', 'receptionist'],
-  '/laboratory': ['super_admin', 'admin', 'doctor', 'lab_technician'],
-  '/pharmacy': ['super_admin', 'admin', 'doctor', 'pharmacist'],
+  '/laboratory': ['super_admin', 'admin', 'lab_technician'],
+  '/lab-results': ['super_admin', 'admin', 'doctor'],
+  '/pharmacy': ['super_admin', 'admin', 'pharmacist'],
   '/inventory': ['super_admin', 'admin', 'pharmacist'],
   '/billing': ['super_admin', 'admin', 'receptionist', 'cashier'],
   '/reports': ['super_admin', 'admin', 'doctor'],
@@ -86,4 +88,31 @@ export function canManageUsers(role: UserRole | undefined): boolean {
 
 export function canManageDoctors(role: UserRole | undefined): boolean {
   return role === 'super_admin' || role === 'admin'
+}
+
+export function isDoctorRole(role: UserRole | undefined): boolean {
+  return role === 'doctor'
+}
+
+/** Roles an admin may assign when creating or editing staff */
+export function getAssignableRoles(callerRole: UserRole | undefined): UserRole[] {
+  if (callerRole === 'super_admin') {
+    return STAFF_ROLES.filter((r) => r !== 'super_admin')
+  }
+  if (callerRole === 'admin') {
+    return STAFF_ROLES.filter((r) => r !== 'super_admin')
+  }
+  return []
+}
+
+export const ROLE_DESCRIPTIONS: Record<UserRole, string> = {
+  super_admin: 'Full system access',
+  admin: 'Hospital administration, users, settings',
+  doctor: 'Consultations, prescriptions, lab orders — use Doctors page for full profile',
+  nurse: 'Vitals, assessments, patient care',
+  receptionist: 'Check-in, queue, appointments, billing',
+  pharmacist: 'Dispense medicines, manage pharmacy stock',
+  lab_technician: 'Process lab tests and enter results',
+  cashier: 'Invoices and payment collection',
+  patient: 'Patient portal only',
 }

@@ -26,6 +26,7 @@ const NAV_CONFIG: Record<AppRoute, { icon: typeof LayoutDashboard; label: string
   '/assessments': { icon: Heart, label: 'Assessments' },
   '/admissions': { icon: BedDouble, label: 'Admissions' },
   '/laboratory': { icon: FlaskConical, label: 'Laboratory' },
+  '/lab-results': { icon: FlaskConical, label: 'Lab Results' },
   '/pharmacy': { icon: Pill, label: 'Pharmacy' },
   '/inventory': { icon: Package, label: 'Inventory' },
   '/billing': { icon: Receipt, label: 'Billing' },

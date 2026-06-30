@@ -96,7 +96,67 @@ export function useRecordPayment() {
         })
       }
     },
-    onSuccess: () => qc.invalidateQueries({ queryKey: ['invoices'] }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['invoices'] })
+      qc.invalidateQueries({ queryKey: ['my-invoices'] })
+      qc.invalidateQueries({ queryKey: ['patient-dashboard'] })
+    },
+  })
+}
+
+export function usePatientPayInvoice() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: async (payload: {
+      invoice_id: string
+      amount: number
+      payment_method: PaymentMethod
+      reference_number?: string
+      userId: string
+    }) => {
+      const { data: invoice, error: fetchErr } = await supabase
+        .from('invoices')
+        .select('total_amount, amount_paid, patient_id, patients(user_id)')
+        .eq('id', payload.invoice_id)
+        .single()
+      if (fetchErr) throw fetchErr
+
+      const patient = invoice.patients as { user_id: string } | null
+      if (patient?.user_id !== payload.userId) throw new Error('Not authorized to pay this invoice')
+
+      const newPaid = Number(invoice.amount_paid) + payload.amount
+      const status = newPaid >= Number(invoice.total_amount) ? 'paid' : 'partial'
+
+      const { error: payErr } = await supabase.from('payments').insert({
+        invoice_id: payload.invoice_id,
+        amount: payload.amount,
+        payment_method: payload.payment_method,
+        reference_number: payload.reference_number ?? `${payload.payment_method.toUpperCase()}-${Date.now()}`,
+        received_by: null,
+      })
+      if (payErr) throw payErr
+
+      const { error } = await supabase
+        .from('invoices')
+        .update({ amount_paid: newPaid, status, updated_at: new Date().toISOString() })
+        .eq('id', payload.invoice_id)
+      if (error) throw error
+
+      if (status === 'paid' && patient?.user_id) {
+        await supabase.from('notifications').insert({
+          user_id: patient.user_id,
+          title: 'Payment confirmed',
+          message: `Your payment of KES ${payload.amount.toLocaleString()} was received successfully.`,
+          type: 'billing',
+        })
+      }
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['invoices'] })
+      qc.invalidateQueries({ queryKey: ['my-invoices'] })
+      qc.invalidateQueries({ queryKey: ['patient-dashboard'] })
+      qc.invalidateQueries({ queryKey: ['my-notifications'] })
+    },
   })
 }
 
@@ -106,7 +166,7 @@ export function usePendingPrescriptions() {
     queryFn: async () => {
       const { data, error } = await supabase
         .from('prescriptions')
-        .select('*, patient:patients(first_name, last_name, patient_number), medicine:medicines(name, unit), doctor:doctors(display_name, specialization)')
+        .select('*, patient:patients(first_name, last_name, patient_number, user_id), medicine:medicines(name, unit, unit_price), doctor:doctors(display_name, specialization)')
         .eq('dispensed', false)
         .order('created_at', { ascending: false })
       if (error) throw error

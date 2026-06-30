@@ -12,6 +12,7 @@ import {
   useManageAnnouncements,
   useCreateAnnouncement,
 } from '@/services/settingsService'
+import { toast } from '@/hooks/useToast'
 
 export function SettingsPage() {
   const { profile } = useAuthStore()
@@ -34,22 +35,27 @@ export function SettingsPage() {
         onSubmit={async (e) => {
           e.preventDefault()
           const fd = new FormData(e.currentTarget)
-          await updateSettings.mutateAsync({
-            id: settings.id,
-            hospital_name: fd.get('hospital_name') as string,
-            address: fd.get('address') as string,
-            phone: fd.get('phone') as string,
-            email: fd.get('email') as string,
-            tax_rate: Number(fd.get('tax_rate')),
-            currency: fd.get('currency') as string,
-            appointment_duration_minutes: Number(fd.get('appointment_duration')),
-            working_hours: {
-              start: fd.get('opens') as string,
-              end: fd.get('closes') as string,
-            },
-            theme: fd.get('theme') as string,
-            language: fd.get('language') as string,
-          })
+          try {
+            await updateSettings.mutateAsync({
+              id: settings.id,
+              hospital_name: fd.get('hospital_name') as string,
+              address: fd.get('address') as string,
+              phone: fd.get('phone') as string,
+              email: fd.get('email') as string,
+              tax_rate: Number(fd.get('tax_rate')),
+              currency: fd.get('currency') as string,
+              appointment_duration_minutes: Number(fd.get('appointment_duration')),
+              working_hours: {
+                start: fd.get('opens') as string,
+                end: fd.get('closes') as string,
+              },
+              theme: fd.get('theme') as string,
+              language: fd.get('language') as string,
+            })
+            toast('Settings saved successfully.')
+          } catch (err) {
+            toast(err instanceof Error ? err.message : 'Failed to save settings.', 'error')
+          }
         }}
       >
         <div className="grid lg:grid-cols-2 gap-6">
@@ -117,9 +123,14 @@ export function SettingsPage() {
         <form onSubmit={async (e) => {
           e.preventDefault()
           if (!profile) return
-          await createAnnouncement.mutateAsync({ title: annTitle, body: annBody, created_by: profile.id })
-          setAnnTitle('')
-          setAnnBody('')
+          try {
+            await createAnnouncement.mutateAsync({ title: annTitle, body: annBody, created_by: profile.id })
+            setAnnTitle('')
+            setAnnBody('')
+            toast('Announcement posted to patient portal.')
+          } catch (err) {
+            toast(err instanceof Error ? err.message : 'Failed to post announcement.', 'error')
+          }
         }} className="space-y-3 mb-6">
           <Input label="Title" value={annTitle} onChange={(e) => setAnnTitle(e.target.value)} required />
           <textarea value={annBody} onChange={(e) => setAnnBody(e.target.value)} rows={2} className="w-full rounded-xl border border-navy-200 px-4 py-2 text-sm" placeholder="Announcement message for patients..." />

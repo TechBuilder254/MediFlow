@@ -8,8 +8,10 @@ import { Modal } from '@/components/ui/Modal'
 import { LoadingSpinner, EmptyState } from '@/components/ui/EmptyState'
 import { supabase } from '@/lib/supabase'
 import { useUpdateLabTest } from '@/services/clinicalService'
+import { useAuthStore } from '@/hooks/useAuth'
 import { formatDate } from '@/utils/cn'
 import type { LabStatus } from '@/types'
+import { toast } from '@/hooks/useToast'
 
 const statusMap: Record<LabStatus, 'warning' | 'info' | 'success' | 'danger'> = {
   pending: 'warning',
@@ -21,15 +23,23 @@ const statusMap: Record<LabStatus, 'warning' | 'info' | 'success' | 'danger'> = 
 export function LaboratoryPage() {
   const [resultModal, setResultModal] = useState<{ id: string; patientUserId?: string } | null>(null)
   const [resultText, setResultText] = useState('')
+  const { profile, user } = useAuthStore()
+  const isLabTech = profile?.role === 'lab_technician'
   const updateLab = useUpdateLabTest()
 
   const { data: tests, isLoading, refetch } = useQuery({
-    queryKey: ['lab-tests'],
+    queryKey: ['lab-tests', user?.id, profile?.role],
     queryFn: async () => {
-      const { data, error } = await supabase
+      let query = supabase
         .from('laboratory_tests')
-        .select('*, patient:patients(first_name, last_name, patient_number, user_id)')
+        .select('*, patient:patients(first_name, last_name, patient_number, user_id), doctor:doctors(display_name)')
         .order('ordered_at', { ascending: false })
+
+      if (isLabTech && user?.id) {
+        query = query.eq('technician_id', user.id)
+      }
+
+      const { data, error } = await query
       if (error) throw error
       return data
     },
@@ -40,21 +50,35 @@ export function LaboratoryPage() {
       setResultModal({ id, patientUserId })
       return
     }
-    await updateLab.mutateAsync({ id, status })
-    refetch()
+    try {
+      await updateLab.mutateAsync({
+        id,
+        status,
+        technicianId: isLabTech ? user?.id : undefined,
+      })
+      refetch()
+    } catch (err) {
+      toast(err instanceof Error ? err.message : 'Update failed.', 'error')
+    }
   }
 
   const submitResult = async () => {
-    if (!resultModal) return
-    await updateLab.mutateAsync({
-      id: resultModal.id,
-      status: 'completed',
-      result_summary: resultText,
-      patientUserId: resultModal.patientUserId,
-    })
-    setResultModal(null)
-    setResultText('')
-    refetch()
+    if (!resultModal || !resultText.trim()) return
+    try {
+      await updateLab.mutateAsync({
+        id: resultModal.id,
+        status: 'completed',
+        result_summary: resultText.trim(),
+        patientUserId: resultModal.patientUserId,
+        technicianId: user?.id,
+      })
+      setResultModal(null)
+      setResultText('')
+      toast('Results sent to doctor and patient.')
+      refetch()
+    } catch (err) {
+      toast(err instanceof Error ? err.message : 'Failed to save results.', 'error')
+    }
   }
 
   const pending = tests?.filter((t) => t.status === 'pending').length ?? 0
@@ -62,7 +86,10 @@ export function LaboratoryPage() {
 
   return (
     <div>
-      <PageHeader title="Laboratory" description="Process tests, record results, and notify patients" />
+      <PageHeader
+        title="Laboratory"
+        description={isLabTech ? 'Tests assigned to you by doctors — enter results here' : 'All laboratory tests'}
+      />
 
       <div className="grid sm:grid-cols-3 gap-4 mb-6">
         <div className="rounded-xl bg-amber-50 border border-amber-200 p-4">
@@ -84,7 +111,7 @@ export function LaboratoryPage() {
       {isLoading ? (
         <LoadingSpinner />
       ) : !tests?.length ? (
-        <EmptyState icon={FlaskConical} title="No lab tests" description="Tests ordered by doctors will appear here" />
+        <EmptyState icon={FlaskConical} title="No lab tests" description={isLabTech ? 'Doctors will assign tests to you during consultations' : 'Tests ordered by doctors will appear here'} />
       ) : (
         <div className="rounded-2xl border border-navy-100 bg-white overflow-hidden">
           <table className="w-full text-sm">
@@ -92,29 +119,35 @@ export function LaboratoryPage() {
               <tr className="border-b border-navy-100 bg-navy-50/50">
                 <th className="text-left px-6 py-3 font-semibold text-navy-600">Test</th>
                 <th className="text-left px-6 py-3 font-semibold text-navy-600">Patient</th>
+                <th className="text-left px-6 py-3 font-semibold text-navy-600 hidden md:table-cell">Doctor instructions</th>
                 <th className="text-left px-6 py-3 font-semibold text-navy-600">Status</th>
-                <th className="text-left px-6 py-3 font-semibold text-navy-600 hidden md:table-cell">Ordered</th>
                 <th className="text-right px-6 py-3 font-semibold text-navy-600">Actions</th>
               </tr>
             </thead>
             <tbody>
               {tests.map((test) => {
                 const patient = test.patient as { first_name: string; last_name: string; user_id?: string } | null
+                const doctor = test.doctor as { display_name?: string } | null
                 return (
                   <tr key={test.id} className="border-b border-navy-50 hover:bg-navy-50/30">
-                    <td className="px-6 py-4 font-medium text-navy-900">{test.test_name}</td>
+                    <td className="px-6 py-4">
+                      <p className="font-medium text-navy-900">{test.test_name}</p>
+                      <p className="text-xs text-navy-500">Ordered by {doctor?.display_name || 'Doctor'}</p>
+                    </td>
                     <td className="px-6 py-4">{patient ? `${patient.first_name} ${patient.last_name}` : '—'}</td>
+                    <td className="px-6 py-4 text-navy-600 hidden md:table-cell max-w-xs">
+                      <p className="line-clamp-2">{test.notes || '—'}</p>
+                    </td>
                     <td className="px-6 py-4">
                       <Badge variant={statusMap[test.status as LabStatus]}>{test.status.replace('_', ' ')}</Badge>
                     </td>
-                    <td className="px-6 py-4 text-navy-500 hidden md:table-cell">{formatDate(test.ordered_at)}</td>
                     <td className="px-6 py-4 text-right space-x-2">
                       {test.status === 'pending' && (
-                        <Button size="sm" variant="outline" onClick={() => handleStatus(test.id, 'in_progress')}>Accept</Button>
+                        <Button size="sm" variant="outline" onClick={() => handleStatus(test.id, 'in_progress')}>Start</Button>
                       )}
                       {test.status === 'in_progress' && (
                         <Button size="sm" onClick={() => handleStatus(test.id, 'completed', patient?.user_id)}>
-                          <CheckCircle className="h-4 w-4" /> Complete
+                          <CheckCircle className="h-4 w-4" /> Submit Results
                         </Button>
                       )}
                     </td>
@@ -128,6 +161,7 @@ export function LaboratoryPage() {
 
       <Modal open={!!resultModal} onClose={() => setResultModal(null)} title="Enter Test Results">
         <div className="space-y-4">
+          <p className="text-sm text-navy-600">Results are sent to the ordering doctor and patient. You cannot edit after saving.</p>
           <textarea
             value={resultText}
             onChange={(e) => setResultText(e.target.value)}
@@ -135,7 +169,7 @@ export function LaboratoryPage() {
             className="w-full rounded-xl border border-navy-200 px-4 py-3 text-sm"
             placeholder="Result summary — e.g. Hemoglobin: 14.2 g/dL (Normal)"
           />
-          <Button onClick={submitResult} loading={updateLab.isPending}>Save & Notify Patient</Button>
+          <Button onClick={submitResult} loading={updateLab.isPending} disabled={!resultText.trim()}>Submit to Doctor & Patient</Button>
         </div>
       </Modal>
     </div>

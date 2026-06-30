@@ -1,6 +1,7 @@
 import { Link } from 'react-router-dom'
 import {
   Calendar, FileText, Pill, Bell, Megaphone, CheckCircle, MapPin,
+  FlaskConical, Receipt,
 } from 'lucide-react'
 import { PageHeader } from '@/components/ui/PageHeader'
 import { Card } from '@/components/ui/Card'
@@ -8,10 +9,10 @@ import { Button } from '@/components/ui/Button'
 import { Badge } from '@/components/ui/Badge'
 import { LoadingSpinner } from '@/components/ui/EmptyState'
 import { useAuthStore } from '@/hooks/useAuth'
-import { useMyPatientRecord, useMyAppointments } from '@/services/patientPortalService'
+import { useMyPatientRecord, useMyAppointments, usePatientDashboard } from '@/services/patientPortalService'
 import { useAnnouncements } from '@/services/settingsService'
 import { calcProfileCompletion } from '@/utils/patientFlow'
-import { formatDate, formatTime, cn } from '@/utils/cn'
+import { formatDate, formatTime, cn, formatCurrency } from '@/utils/cn'
 
 const QUICK_ACTIONS = [
   { to: '/portal/book', icon: Calendar, label: 'Book Appointment', color: 'bg-primary-600 text-white' },
@@ -24,6 +25,7 @@ export function PatientDashboardPage() {
   const { profile, user } = useAuthStore()
   const { data: patient, isLoading } = useMyPatientRecord(user?.id)
   const { data: appointments } = useMyAppointments(patient?.id)
+  const { data: summary } = usePatientDashboard(patient?.id)
   const { data: announcements } = useAnnouncements()
 
   if (isLoading) return <LoadingSpinner />
@@ -69,6 +71,39 @@ export function PatientDashboardPage() {
             </div>
           </Link>
         ))}
+      </div>
+
+      <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
+        <Link to="/portal/prescriptions">
+          <Card hover className="text-center">
+            <Pill className="h-6 w-6 text-primary-600 mx-auto mb-2" />
+            <p className="text-2xl font-bold text-navy-900">{summary?.activePrescriptions ?? 0}</p>
+            <p className="text-xs text-navy-500">Pending prescriptions</p>
+          </Card>
+        </Link>
+        <Link to="/portal/lab">
+          <Card hover className="text-center">
+            <FlaskConical className="h-6 w-6 text-sky-600 mx-auto mb-2" />
+            <p className="text-sm font-semibold text-navy-900 truncate">{summary?.latestLab?.test_name ?? 'No results'}</p>
+            <p className="text-xs text-navy-500">Latest lab test</p>
+          </Card>
+        </Link>
+        <Link to="/portal/billing">
+          <Card hover className="text-center">
+            <Receipt className="h-6 w-6 text-amber-600 mx-auto mb-2" />
+            <p className="text-2xl font-bold text-navy-900">
+              {summary?.outstandingBill ? formatCurrency(summary.outstandingBill.total_amount - summary.outstandingBill.amount_paid) : formatCurrency(0)}
+            </p>
+            <p className="text-xs text-navy-500">Outstanding balance</p>
+          </Card>
+        </Link>
+        <Link to="/portal/records">
+          <Card hover className="text-center">
+            <FileText className="h-6 w-6 text-violet-600 mx-auto mb-2" />
+            <p className="text-sm font-semibold text-navy-900">Medical history</p>
+            <p className="text-xs text-navy-500">View your progress</p>
+          </Card>
+        </Link>
       </div>
 
       <div className="grid lg:grid-cols-2 gap-6">

@@ -134,6 +134,7 @@ export interface Database {
           ordered_at: string
           completed_at: string | null
           notes: string | null
+          appointment_id: string | null
         }
         Insert: Partial<Database['public']['Tables']['laboratory_tests']['Row']> & { patient_id: string; test_name: string }
         Update: Partial<Database['public']['Tables']['laboratory_tests']['Row']>

@@ -9,13 +9,24 @@ export function AuditLogsPage() {
   const { data: logs, isLoading } = useQuery({
     queryKey: ['audit-logs'],
     queryFn: async () => {
-      const { data, error } = await supabase
+      const { data: logs, error } = await supabase
         .from('activity_logs')
-        .select('*, profile:profiles(full_name)')
+        .select('*')
         .order('created_at', { ascending: false })
         .limit(50)
       if (error) throw error
-      return data
+      if (!logs?.length) return []
+
+      const userIds = logs.map((l) => l.user_id).filter(Boolean) as string[]
+      const { data: profiles } = userIds.length
+        ? await supabase.from('profiles').select('id, full_name').in('id', userIds)
+        : { data: [] as { id: string; full_name: string }[] }
+
+      const nameMap = new Map((profiles ?? []).map((p) => [p.id, p.full_name]))
+      return logs.map((log) => ({
+        ...log,
+        profile: log.user_id ? { full_name: nameMap.get(log.user_id) ?? 'System' } : null,
+      }))
     },
   })
 

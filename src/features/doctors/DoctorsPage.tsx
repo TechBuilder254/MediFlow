@@ -14,6 +14,8 @@ import { canManageDoctors } from '@/lib/permissions'
 import { useDoctors, useDepartments, isDoctorActive, getDoctorDisplayName } from '@/services/doctorService'
 import { useCreateStaffUser, useToggleDoctorActive } from '@/services/adminService'
 import { formatCurrency } from '@/utils/cn'
+import { toast } from '@/hooks/useToast'
+import type { DoctorWithRelations } from '@/services/doctorService'
 
 const doctorSchema = z.object({
   full_name: z.string().min(2, 'Full name is required'),
@@ -35,9 +37,10 @@ type DoctorForm = z.infer<typeof doctorSchema>
 export function DoctorsPage() {
   const [showModal, setShowModal] = useState(false)
   const [credentials, setCredentials] = useState<{ name: string; email: string; password: string } | null>(null)
+  const [selectedDoctor, setSelectedDoctor] = useState<DoctorWithRelations | null>(null)
   const { profile } = useAuthStore()
   const canManage = canManageDoctors(profile?.role)
-  const { data: doctors, isLoading } = useDoctors()
+  const { data: doctors, isLoading, isError, error, refetch } = useDoctors()
   const { data: departments } = useDepartments()
   const createDoctor = useCreateStaffUser()
   const toggleDoctor = useToggleDoctorActive()
@@ -48,26 +51,32 @@ export function DoctorsPage() {
   })
 
   const onSubmit = async (data: DoctorForm) => {
-    const result = await createDoctor.mutateAsync({
-      email: data.email,
-      password: data.password,
-      full_name: data.full_name,
-      role: 'doctor',
-      phone: data.phone,
-      doctor: {
-        department_id: data.department_id,
-        specialization: data.specialization,
-        qualification: data.qualification,
-        license_number: data.license_number,
-        years_experience: data.years_experience,
-        consultation_fee: data.consultation_fee,
-        consultation_room: data.consultation_room,
-        languages: data.languages ? data.languages.split(',').map((l) => l.trim()) : undefined,
-      },
-    })
-    setShowModal(false)
-    form.reset()
-    setCredentials({ name: result.full_name, email: result.email, password: result.password })
+    try {
+      const result = await createDoctor.mutateAsync({
+        email: data.email,
+        password: data.password,
+        full_name: data.full_name,
+        role: 'doctor',
+        phone: data.phone,
+        doctor: {
+          department_id: data.department_id,
+          specialization: data.specialization,
+          qualification: data.qualification,
+          license_number: data.license_number,
+          years_experience: data.years_experience,
+          consultation_fee: data.consultation_fee,
+          consultation_room: data.consultation_room,
+          languages: data.languages ? data.languages.split(',').map((l) => l.trim()) : undefined,
+        },
+      })
+      setShowModal(false)
+      form.reset({ years_experience: 0, consultation_fee: 2500 })
+      await refetch()
+      setCredentials({ name: result.full_name, email: result.email, password: result.password })
+      toast('Doctor account created successfully.')
+    } catch (err) {
+      toast(err instanceof Error ? err.message : 'Failed to create doctor account.', 'error')
+    }
   }
 
   const handleToggle = async (doctorId: string, currentlyActive: boolean) => {
@@ -94,6 +103,12 @@ export function DoctorsPage() {
 
       {isLoading ? (
         <LoadingSpinner />
+      ) : isError ? (
+        <div className="rounded-2xl border border-red-200 bg-red-50 p-6 text-center">
+          <p className="text-red-700 font-medium">Could not load doctors</p>
+          <p className="text-sm text-red-600 mt-1">{error instanceof Error ? error.message : 'Unknown error'}</p>
+          <Button className="mt-4" variant="outline" onClick={() => refetch()}>Retry</Button>
+        </div>
       ) : !doctors?.length ? (
         <EmptyState
           icon={Stethoscope}
@@ -118,7 +133,11 @@ export function DoctorsPage() {
               {doctors.map((doc) => {
                 const active = isDoctorActive(doc)
                 return (
-                  <tr key={doc.id} className="border-b border-navy-50 hover:bg-navy-50/30">
+                  <tr
+                    key={doc.id}
+                    className="border-b border-navy-50 hover:bg-navy-50/30 cursor-pointer"
+                    onClick={() => setSelectedDoctor(doc)}
+                  >
                     <td className="px-6 py-4">
                       <div>
                         <p className="font-medium text-navy-900">{getDoctorDisplayName(doc)}</p>
@@ -152,7 +171,7 @@ export function DoctorsPage() {
                       </div>
                     </td>
                     {canManage && (
-                      <td className="px-6 py-4 text-right">
+                      <td className="px-6 py-4 text-right" onClick={(e) => e.stopPropagation()}>
                         <Button
                           variant={active ? 'danger' : 'outline'}
                           size="sm"
@@ -215,6 +234,35 @@ export function DoctorsPage() {
             <Button type="submit" loading={createDoctor.isPending}>Create Doctor Account</Button>
           </div>
         </form>
+      </Modal>
+
+      <Modal open={!!selectedDoctor} onClose={() => setSelectedDoctor(null)} title="Doctor Details" size="lg">
+        {selectedDoctor && (
+          <div className="space-y-4">
+            <div className="flex items-start justify-between gap-4">
+              <div>
+                <h3 className="text-xl font-bold text-navy-900">{getDoctorDisplayName(selectedDoctor)}</h3>
+                <p className="text-navy-600">{selectedDoctor.specialization}</p>
+              </div>
+              <Badge variant={isDoctorActive(selectedDoctor) ? 'success' : 'danger'}>
+                {isDoctorActive(selectedDoctor) ? 'Active' : 'Disabled'}
+              </Badge>
+            </div>
+            <dl className="grid sm:grid-cols-2 gap-4 text-sm">
+              <div><dt className="text-navy-500">Email</dt><dd className="font-medium">{selectedDoctor.profile?.email || '—'}</dd></div>
+              <div><dt className="text-navy-500">Phone</dt><dd className="font-medium">{selectedDoctor.profile?.phone || '—'}</dd></div>
+              <div><dt className="text-navy-500">Department</dt><dd className="font-medium">{selectedDoctor.department?.name || '—'}</dd></div>
+              <div><dt className="text-navy-500">License</dt><dd className="font-medium">{selectedDoctor.license_number || '—'}</dd></div>
+              <div><dt className="text-navy-500">Qualification</dt><dd className="font-medium">{selectedDoctor.qualification || '—'}</dd></div>
+              <div><dt className="text-navy-500">Experience</dt><dd className="font-medium">{selectedDoctor.years_experience} years</dd></div>
+              <div><dt className="text-navy-500">Consultation Fee</dt><dd className="font-medium text-primary-600">{formatCurrency(selectedDoctor.consultation_fee)}</dd></div>
+              <div><dt className="text-navy-500">Room</dt><dd className="font-medium">{selectedDoctor.consultation_room || '—'}</dd></div>
+              <div className="sm:col-span-2"><dt className="text-navy-500">Languages</dt><dd className="font-medium">{selectedDoctor.languages?.join(', ') || '—'}</dd></div>
+              <div><dt className="text-navy-500">On Duty</dt><dd className="font-medium">{selectedDoctor.is_on_duty ? 'Yes' : 'No'}</dd></div>
+            </dl>
+            <Button className="w-full" onClick={() => setSelectedDoctor(null)}>Close</Button>
+          </div>
+        )}
       </Modal>
 
       <Modal open={!!credentials} onClose={() => setCredentials(null)} title="Doctor Account Created" size="md">

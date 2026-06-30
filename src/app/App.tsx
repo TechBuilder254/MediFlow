@@ -16,6 +16,7 @@ import { AppointmentsPage } from '@/features/appointments/AppointmentsPage'
 import { QueuePage } from '@/features/appointments/QueuePage'
 import { AdmissionsPage } from '@/features/admissions/AdmissionsPage'
 import { LaboratoryPage } from '@/features/laboratory/LaboratoryPage'
+import { DoctorLabResultsPage } from '@/features/laboratory/DoctorLabResultsPage'
 import { PharmacyPage } from '@/features/pharmacy/PharmacyPage'
 import { InventoryPage } from '@/features/inventory/InventoryPage'
 import { BillingPage } from '@/features/billing/BillingPage'
@@ -101,6 +102,10 @@ export default function App() {
 
           <Route element={<RoleRoute route="/laboratory" />}>
             <Route path="/laboratory" element={<LaboratoryPage />} />
+          </Route>
+
+          <Route element={<RoleRoute route="/lab-results" />}>
+            <Route path="/lab-results" element={<DoctorLabResultsPage />} />
           </Route>
 
           <Route element={<RoleRoute route="/pharmacy" />}>

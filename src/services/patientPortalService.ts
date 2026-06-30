@@ -339,3 +339,52 @@ export function useUpdateMyProfile() {
     },
   })
 }
+
+export function useMarkNotificationRead() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: async (id: string) => {
+      const { error } = await supabase.from('notifications').update({ is_read: true }).eq('id', id)
+      if (error) throw error
+    },
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['my-notifications'] }),
+  })
+}
+
+export function useMyMessages(patientId?: string) {
+  return useQuery({
+    queryKey: ['my-messages', patientId],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('patient_messages')
+        .select('*, sender:profiles(full_name, role)')
+        .eq('patient_id', patientId!)
+        .order('created_at', { ascending: false })
+      if (error) throw error
+      return data
+    },
+    enabled: !!patientId,
+  })
+}
+
+export function useSendPatientMessage() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: async (payload: {
+      patient_id: string
+      sender_id: string
+      recipient_role: string
+      subject: string
+      body: string
+    }) => {
+      const { data, error } = await supabase
+        .from('patient_messages')
+        .insert(payload)
+        .select()
+        .single()
+      if (error) throw error
+      return data
+    },
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['my-messages'] }),
+  })
+}

@@ -1,6 +1,7 @@
 import { useState } from 'react'
+import { Link } from 'react-router-dom'
 import { useQuery } from '@tanstack/react-query'
-import { CheckCircle, XCircle, Clock, UserCheck } from 'lucide-react'
+import { CheckCircle, XCircle, Clock, UserCheck, FileText } from 'lucide-react'
 import { Card } from '@/components/ui/Card'
 import { Button } from '@/components/ui/Button'
 import { Badge } from '@/components/ui/Badge'
@@ -91,6 +92,11 @@ export function DoctorAppointmentRequests() {
                     <Button size="sm" onClick={() => handleAccept(apt)} loading={review.isPending}>
                       <CheckCircle className="h-4 w-4" /> Accept
                     </Button>
+                    <Link to={`/consultation/${apt.id}`}>
+                      <Button size="sm" variant="outline">
+                        <FileText className="h-4 w-4" /> Open chart
+                      </Button>
+                    </Link>
                     <Button size="sm" variant="outline" onClick={() => setSuggestModal(apt.id)}>
                       <Clock className="h-4 w-4" /> Suggest Time
                     </Button>

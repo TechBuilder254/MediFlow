@@ -57,6 +57,27 @@ export function useCreateDepartment() {
   })
 }
 
+export function useUpdateDepartment() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: async ({ id, name, description }: { id: string; name: string; description?: string }) => {
+      const { data, error } = await supabase
+        .from('departments')
+        .update({ name, description: description || null })
+        .eq('id', id)
+        .select()
+        .single()
+      if (error) throw error
+      return data
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['departments-admin'] })
+      qc.invalidateQueries({ queryKey: ['departments'] })
+      qc.invalidateQueries({ queryKey: ['booking-departments-all'] })
+    },
+  })
+}
+
 export function useAnnouncements() {
   return useQuery({
     queryKey: ['announcements'],

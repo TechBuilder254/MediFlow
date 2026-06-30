@@ -1,6 +1,7 @@
-import { useMutation, useQueryClient } from '@tanstack/react-query'
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { supabase } from '@/lib/supabase'
-import type { UserRole } from '@/types'
+import type { Profile, UserRole } from '@/types'
+import { STAFF_ROLES } from '@/lib/permissions'
 
 export interface CreateUserPayload {
   email: string
@@ -26,6 +27,14 @@ export interface CreateUserResult {
   password: string
   full_name: string
   role: string
+  doctor_id?: string | null
+}
+
+export interface UpdateUserPayload {
+  user_id: string
+  full_name?: string
+  phone?: string
+  role?: UserRole
 }
 
 async function invokeAdmin<T>(body: Record<string, unknown>): Promise<T> {
@@ -33,6 +42,22 @@ async function invokeAdmin<T>(body: Record<string, unknown>): Promise<T> {
   if (error) throw new Error(error.message)
   if (data?.error) throw new Error(data.error)
   return data as T
+}
+
+export function useStaffUsers() {
+  return useQuery({
+    queryKey: ['users'],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('profiles')
+        .select('*')
+        .in('role', STAFF_ROLES)
+        .is('deleted_at', null)
+        .order('created_at', { ascending: false })
+      if (error) throw error
+      return data as Profile[]
+    },
+  })
 }
 
 export function useCreateStaffUser() {
@@ -44,6 +69,18 @@ export function useCreateStaffUser() {
       qc.invalidateQueries({ queryKey: ['users'] })
       qc.invalidateQueries({ queryKey: ['doctors'] })
       qc.invalidateQueries({ queryKey: ['doctors-by-dept'] })
+    },
+  })
+}
+
+export function useUpdateStaffUser() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: (payload: UpdateUserPayload) =>
+      invokeAdmin<{ success: boolean }>({ action: 'update_user', ...payload }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['users'] })
+      qc.invalidateQueries({ queryKey: ['doctors'] })
     },
   })
 }
@@ -61,9 +98,11 @@ export function useToggleUserActive() {
 }
 
 export function useResetUserPassword() {
+  const qc = useQueryClient()
   return useMutation({
     mutationFn: ({ user_id, password }: { user_id: string; password: string }) =>
       invokeAdmin<{ success: boolean; password: string }>({ action: 'reset_password', user_id, password }),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['users'] }),
   })
 }
 
